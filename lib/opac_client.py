@@ -1,6 +1,8 @@
 """Client HTTP verso l'OPAC della biblioteca di Lodi."""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 import requests
 
 from . import parser
@@ -40,6 +42,14 @@ def cerca(query: str, pagina: int = 1) -> RisultatoRicerca:
         return parser.parse_risultati(html, query=query, pagina=pagina)
 
     return get_or_set(key, _do)
+
+
+def dettagli_in_parallelo(libro_ids: list[str], max_workers: int = 5) -> list[Libro | None]:
+    """Recupera il dettaglio di più libri in parallelo (I/O bound)."""
+    if not libro_ids:
+        return []
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        return list(pool.map(dettaglio, libro_ids))
 
 
 def dettaglio(libro_id: str) -> Libro | None:

@@ -45,45 +45,57 @@ def cerca():
 
 @app.get("/api/disponibile")
 def disponibile():
+    """Scansiona la prima pagina di risultati, scarica i dettagli in parallelo
+    e aggrega la disponibilità nella biblioteca richiesta."""
     q = (request.args.get("q") or "").strip()
     if not q:
         return jsonify({"errore": "parametro 'q' obbligatorio"}), 400
 
     biblioteca = request.args.get("biblioteca", BIBLIOTECA_DEFAULT)
     formato = request.args.get("formato", "testo")
+    max_edizioni = int(request.args.get("max_edizioni", "10") or "10")
 
     try:
         risultato = opac_client.cerca(q)
     except opac_client.OpacError as e:
         return jsonify({"errore": str(e)}), 502
 
-    candidato = _miglior_candidato(risultato.risultati)
-    if not candidato or not candidato.id:
-        msg = f'Non ho trovato il libro "{q}" nel catalogo.'
-        if formato == "testo":
-            return Response(msg, mimetype="text/plain; charset=utf-8")
-        return jsonify({"trovato": False, "messaggio": msg})
+    catalog_ids = [
+        l.id for l in risultato.risultati
+        if l.id and l.id.startswith("lo:catalog:")
+    ][:max_edizioni]
 
     try:
-        libro = opac_client.dettaglio(candidato.id)
+        dettagli = opac_client.dettagli_in_parallelo(catalog_ids)
     except opac_client.OpacError as e:
         return jsonify({"errore": str(e)}), 502
 
-    if not libro:
-        return jsonify({"errore": f"Dettaglio non disponibile per {candidato.id}"}), 404
+    edizioni_in_sede = [
+        libro for libro in dettagli
+        if libro and libro.disponibilita_in(biblioteca)
+    ]
 
     if formato == "testo":
-        return Response(formatter.disponibilita_to_text(libro, biblioteca),
-                        mimetype="text/plain; charset=utf-8")
-    copie = libro.disponibilita_in(biblioteca)
+        testo = formatter.disponibilita_aggregata_to_text(
+            query=q, edizioni=edizioni_in_sede,
+            biblioteca=biblioteca, totale_esaminate=len(catalog_ids),
+        )
+        return Response(testo, mimetype="text/plain; charset=utf-8")
+
     return jsonify({
-        "trovato": True,
-        "id": libro.id,
-        "titolo": libro.titolo,
-        "autore": libro.autore,
+        "query": q,
         "biblioteca": biblioteca,
-        "copie_nella_biblioteca": [c.to_dict() for c in copie],
-        "disponibile_nella_biblioteca": any(c.disponibile for c in copie),
+        "edizioni_scansionate": len(catalog_ids),
+        "edizioni_in_sede": [
+            {
+                "id": libro.id,
+                "titolo": libro.titolo,
+                "autore": libro.autore,
+                "anno": libro.anno,
+                "copie": [c.to_dict() for c in libro.disponibilita_in(biblioteca)],
+            }
+            for libro in edizioni_in_sede
+        ],
     })
 
 
@@ -114,17 +126,6 @@ def disponibilita():
         "biblioteca_filtro": biblioteca,
         "copie": [c.to_dict() for c in copie],
     })
-
-
-def _miglior_candidato(libri):
-    """Preferisce libri fisici a catalogo con copie reali, poi catalogo, poi qualsiasi."""
-    con_copie = [l for l in libri if l.id and l.id.startswith("lo:catalog:") and (l.copie_totali or 0) > 0]
-    if con_copie:
-        return con_copie[0]
-    catalog = [l for l in libri if l.id and l.id.startswith("lo:catalog:")]
-    if catalog:
-        return catalog[0]
-    return libri[0] if libri else None
 
 
 if __name__ == "__main__":
