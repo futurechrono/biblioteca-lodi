@@ -11,10 +11,20 @@ essere mostrata in chat.
 ## Architettura
 
 ```
-utente ──► Pandorabots (AIML) ──sraix──► Vercel (api/*.py) ──HTTP──► OPAC Lodi
-                                                │
-                                                └── cache in-memory (TTL)
+Frontend HTML (GitHub Pages)
+        │
+        ▼
+Vercel /api/chat
+        │
+        ├──► Pandorabots Talk API   (NLP: estrae il titolo dalla frase)
+        │
+        └──► OPAC Lodi              (ricerca + dettaglio + filtro disponibilità)
 ```
+
+Il frontend statico chiama un solo endpoint del middleware Vercel. Il middleware
+delega a Pandorabots l'analisi linguistica (riconoscimento intent + estrazione
+titolo), poi interroga l'OPAC e aggrega la risposta. Questo schema evita le
+limitazioni di CORS e di SRAIX esterno sul piano free di Pandorabots.
 
 ## Funzionalità
 

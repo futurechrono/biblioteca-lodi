@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bot Biblioteca di Lodi</title>
+  <style>
+    :root {
+      --primary: #2c6e8e;
+      --bg: #f4f6f8;
+      --bubble-bot: #ffffff;
+      --bubble-user: #2c6e8e;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    header h1 { margin: 0; font-size: 1.2rem; }
+    header small { opacity: 0.85; font-size: 0.8rem; }
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .msg {
+      max-width: 80%;
+      margin: 0.5rem 0;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+    .msg.bot {
+      background: var(--bubble-bot);
+      margin-right: auto;
+      border: 1px solid #e5e7eb;
+    }
+    .msg.user {
+      background: var(--bubble-user);
+      color: white;
+      margin-left: auto;
+    }
+    .meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+    .typing {
+      color: var(--muted);
+      font-style: italic;
+      margin: 0.5rem 0;
+    }
+    form {
+      display: flex;
+      padding: 1rem;
+      gap: 0.5rem;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: var(--primary); }
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sistema Bibliotecario Lodigiano</h1>
+    <small>Assistente virtuale per la disponibilità libri</small>
+  </header>
+
+  <main id="chat">
+    <div class="msg bot">Ciao! Chiedimi se un libro è disponibile alla Biblioteca Comunale Laudense.
+Esempio: <em>"Avete 1984 a Lodi?"</em></div>
+  </main>
+
+  <form id="form">
+    <input type="text" id="input" placeholder="Scrivi un messaggio..." autocomplete="off" autofocus>
+    <button type="submit" id="send">Invia</button>
+  </form>
+
+  <script>
+    // Path relativo: la chat parla con lo stesso Vercel che serve la pagina.
+    // Se in futuro vuoi ospitare il frontend altrove, sostituisci con l'URL
+    // completo del backend, es: "https://biblioteca-lodi.vercel.app".
+    const API_BASE = "";
+
+    const SESSION = "web-" + Math.random().toString(36).slice(2, 10);
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const send = document.getElementById("send");
+
+    function append(text, who, meta) {
+      const div = document.createElement("div");
+      div.className = "msg " + who;
+      div.textContent = text;
+      if (meta) {
+        const m = document.createElement("div");
+        m.className = "meta";
+        m.textContent = meta;
+        div.appendChild(m);
+      }
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+    }
+
+    function appendTyping() {
+      const div = document.createElement("div");
+      div.className = "typing";
+      div.textContent = "Sto cercando…";
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      append(msg, "user");
+      input.value = "";
+      send.disabled = true;
+      const typing = appendTyping();
+
+      try {
+        const url = `${API_BASE}/api/chat?msg=${encodeURIComponent(msg)}&session=${SESSION}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        typing.remove();
+
+        if (data.errore) {
+          append("⚠️ " + data.errore, "bot");
+        } else {
+          const meta = data.intent === "ricerca_libro"
+            ? `Titolo riconosciuto: "${data.titolo_estratto}"`
+            : null;
+          append(data.risposta || "(nessuna risposta)", "bot", meta);
+        }
+      } catch (err) {
+        typing.remove();
+        append("⚠️ Errore di rete: " + err.message, "bot");
+      } finally {
+        send.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
