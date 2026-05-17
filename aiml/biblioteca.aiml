@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+  <!--
+    Pattern AIML per il chatbot "biblioteca di Lodi".
+    Richiede un Custom Service Pandorabots chiamato "biblioteca" puntato
+    a https://<tuo-progetto>.vercel.app, path /api/disponibile.
+
+    La query digitata dall'utente viene catturata da <star/> e passata
+    come parametro `q` al middleware. Il middleware risponde con un
+    testo già pronto per essere mostrato in chat.
+  -->
+
+  <category>
+    <pattern>IL LIBRO * E DISPONIBILE A LODI</pattern>
+    <template>
+      <sraix service="biblioteca">
+        q=<star/>&amp;formato=testo
+      </sraix>
+    </template>
+  </category>
+
+  <category>
+    <pattern>E DISPONIBILE * A LODI</pattern>
+    <template><srai>IL LIBRO <star/> E DISPONIBILE A LODI</srai></template>
+  </category>
+
+  <category>
+    <pattern>* E DISPONIBILE A LODI</pattern>
+    <template><srai>IL LIBRO <star/> E DISPONIBILE A LODI</srai></template>
+  </category>
+
+  <category>
+    <pattern>AVETE * A LODI</pattern>
+    <template><srai>IL LIBRO <star/> E DISPONIBILE A LODI</srai></template>
+  </category>
+
+  <category>
+    <pattern>C E * IN BIBLIOTECA</pattern>
+    <template><srai>IL LIBRO <star/> E DISPONIBILE A LODI</srai></template>
+  </category>
+
+</aiml>
