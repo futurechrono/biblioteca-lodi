@@ -7,7 +7,7 @@ import requests
 
 from . import parser
 from .cache import get_or_set
-from .config import HTTP_TIMEOUT_SECONDS, OPAC_BASE_URL, RESULTS_PER_PAGE, USER_AGENT
+from .config import HTTP_TIMEOUT_SECONDS, MAX_RESULTS_PER_PAGE, OPAC_BASE_URL, USER_AGENT
 from .models import Libro, RisultatoRicerca
 
 
@@ -31,7 +31,7 @@ def _fetch(path: str, params: dict | None = None) -> str:
 
 def cerca(query: str, pagina: int = 1) -> RisultatoRicerca:
     """OPAC paginazione: parametro `start` = offset 0-based."""
-    start = max(0, (pagina - 1) * RESULTS_PER_PAGE)
+    start = max(0, (pagina - 1) * MAX_RESULTS_PER_PAGE)
     key = f"cerca:{start}:{query.lower().strip()}"
 
     def _do() -> RisultatoRicerca:

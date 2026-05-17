@@ -13,7 +13,7 @@ Tutte le query arrivano dal chatbot — nessun libro è hard-coded nel codice.
 from flask import Flask, Response, jsonify, request
 
 from lib import formatter, opac_client
-from lib.config import BIBLIOTECA_DEFAULT
+from lib.config import BIBLIOTECA_DEFAULT, MAX_RESULTS_PER_PAGE
 from lib.matching import titolo_matcha_query
 
 app = Flask(__name__)
@@ -54,7 +54,7 @@ def disponibile():
 
     biblioteca = request.args.get("biblioteca", BIBLIOTECA_DEFAULT)
     formato = request.args.get("formato", "testo")
-    max_edizioni = int(request.args.get("max_edizioni", "10") or "10")
+    max_edizioni = int(request.args.get("max_edizioni") or MAX_RESULTS_PER_PAGE)
     match_mode = request.args.get("match", "strict")  # "strict" | "loose"
 
     try:
