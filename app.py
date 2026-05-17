@@ -14,6 +14,7 @@ from flask import Flask, Response, jsonify, request
 
 from lib import formatter, opac_client
 from lib.config import BIBLIOTECA_DEFAULT
+from lib.matching import titolo_matcha_query
 
 app = Flask(__name__)
 
@@ -54,16 +55,32 @@ def disponibile():
     biblioteca = request.args.get("biblioteca", BIBLIOTECA_DEFAULT)
     formato = request.args.get("formato", "testo")
     max_edizioni = int(request.args.get("max_edizioni", "10") or "10")
+    match_mode = request.args.get("match", "strict")  # "strict" | "loose"
 
     try:
         risultato = opac_client.cerca(q)
     except opac_client.OpacError as e:
         return jsonify({"errore": str(e)}), 502
 
-    catalog_ids = [
-        l.id for l in risultato.risultati
-        if l.id and l.id.startswith("lo:catalog:")
-    ][:max_edizioni]
+    candidati = [l for l in risultato.risultati if l.id and l.id.startswith("lo:catalog:")]
+    scartati_titolo = 0
+    if match_mode == "strict":
+        pertinenti = [l for l in candidati if titolo_matcha_query(l.titolo, q)]
+        scartati_titolo = len(candidati) - len(pertinenti)
+        candidati = pertinenti
+
+    catalog_ids = [l.id for l in candidati][:max_edizioni]
+
+    if not catalog_ids:
+        if scartati_titolo:
+            msg = (f'Per "{q}" il catalogo ha {scartati_titolo} risultati, '
+                   "ma nessuno con un titolo attinente alla tua ricerca.")
+        else:
+            msg = f'Non ho trovato "{q}" nel catalogo.'
+        if formato == "testo":
+            return Response(msg, mimetype="text/plain; charset=utf-8")
+        return jsonify({"query": q, "biblioteca": biblioteca, "messaggio": msg,
+                        "edizioni_in_sede": []})
 
     try:
         dettagli = opac_client.dettagli_in_parallelo(catalog_ids)
