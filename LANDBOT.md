@@ -52,21 +52,36 @@ Collega l'output del blocco Welcome a questo blocco.
 |---|---|
 | Method | `GET` |
 | URL | `https://biblioteca-lodi.vercel.app/api/disponibile` |
-| URL parameters | `q` = `@libro` &nbsp;·&nbsp; `formato` = `testo` |
+| URL parameters | `q` = `@libro` |
 | Headers | (lasciare vuoto) |
 | Body | (lasciare vuoto) |
+
+> Niente `formato=testo`: il middleware risponde di default con JSON
+> ben formato che Landbot riconosce nativamente, senza warning "No JSON
+> Response".
 
 Nella sezione **Save response** / **Test webhook**:
 
 1. Clicca **Test the request**: Landbot fa una chiamata di prova
    (puoi inserire un valore di test per `@libro`, es. `1984`).
-2. Nella risposta che appare, clicca sul **body** della response
-   e mappa l'intero corpo della risposta su una nuova variabile `@risposta`
-   (tipo: testo).
+2. La risposta sarà un JSON con questa forma:
 
-> Se Landbot non riesce a parsare la risposta come JSON e va in errore,
-> assicurati di aver passato `formato=testo`: il middleware risponderà con
-> `Content-Type: text/plain`, che Landbot tratta come stringa.
+   ```json
+   {
+     "query": "1984",
+     "biblioteca": "Lodi-Biblioteca Comunale Laudense",
+     "messaggio": "Per \"1984\" alla Lodi-Biblioteca... DISPONIBILI: ...",
+     "edizioni_scansionate": 5,
+     "edizioni_in_sede": [ ... ]
+   }
+   ```
+
+3. Mappa **solo il campo `messaggio`** su una nuova variabile `@risposta`
+   (tipo: **text**). Landbot ti mostra un selettore ad albero: clicca sul
+   campo `messaggio` e poi su "Save in variable".
+
+   Il campo `messaggio` contiene già il testo formattato pronto per la chat,
+   con la lista delle copie disponibili e in prestito.
 
 ### Blocco 4 — Send a Message
 

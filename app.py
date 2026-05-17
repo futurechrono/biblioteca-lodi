@@ -66,7 +66,7 @@ def disponibile():
         return jsonify({"errore": "parametro 'q' obbligatorio"}), 400
 
     biblioteca = request.args.get("biblioteca", BIBLIOTECA_DEFAULT)
-    formato = request.args.get("formato", "testo")
+    formato = request.args.get("formato", "json")
     max_edizioni = int(request.args.get("max_edizioni") or MAX_RESULTS_PER_PAGE)
     match_mode = request.args.get("match", "strict")
 
@@ -105,16 +105,18 @@ def disponibile():
         if libro and libro.disponibilita_in(biblioteca)
     ]
 
+    messaggio = formatter.disponibilita_aggregata_to_text(
+        query=q, edizioni=edizioni_in_sede,
+        biblioteca=biblioteca, totale_esaminate=len(catalog_ids),
+    )
+
     if formato == "testo":
-        testo = formatter.disponibilita_aggregata_to_text(
-            query=q, edizioni=edizioni_in_sede,
-            biblioteca=biblioteca, totale_esaminate=len(catalog_ids),
-        )
-        return Response(testo, mimetype="text/plain; charset=utf-8")
+        return Response(messaggio, mimetype="text/plain; charset=utf-8")
 
     return jsonify({
         "query": q,
         "biblioteca": biblioteca,
+        "messaggio": messaggio,
         "edizioni_scansionate": len(catalog_ids),
         "edizioni_in_sede": [
             {
