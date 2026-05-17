@@ -48,7 +48,7 @@ Richiede Python ≥ 3.10 (il codice usa la sintassi `X | None`).
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-vercel dev          # richiede Vercel CLI
+python app.py        # Flask in dev mode su http://localhost:8000
 ```
 
 Oppure senza Vercel CLI, eseguendo il singolo modulo per test rapidi:
